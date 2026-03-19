@@ -34,7 +34,9 @@ Deploy an Azure Workbook that separates **measured Azure platform readiness** fr
 2. Choose a subscription and resource group for the workbook resource.
 3. Open `Azure Monitor > Workbooks`.
 4. Open `Microsoft Marketplace Readiness Auditor`.
-5. Use the `Subscriptions` filter inside the workbook to scope the assessment.
+5. Use the `Subscriptions` and `Resource group scope` filters inside the workbook to scope the assessment.
+
+The deployment resource group is only where Azure stores the workbook resource. It does not automatically limit the workbook queries to that resource group.
 
 Each chart and table exposes the Azure pin action, so a user can pin the measured platform score, check distribution, or any other visual directly to an Azure Dashboard after deployment.
 
