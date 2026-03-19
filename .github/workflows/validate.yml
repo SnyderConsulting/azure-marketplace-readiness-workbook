@@ -1,0 +1,24 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          python -m json.tool workbook.json >/dev/null
+          python -m json.tool azuredeploy.parameters.json >/dev/null
+
+      - name: Build ARM template from Bicep
+        uses: azure/CLI@v2
+        with:
+          azcliversion: 2.83.0
+          inlineScript: |
+            az bicep build --file main.bicep --outfile azuredeploy.generated.json
+            diff -u azuredeploy.json azuredeploy.generated.json

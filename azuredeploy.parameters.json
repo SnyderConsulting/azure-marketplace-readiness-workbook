@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "displayName": {
+      "value": "Marketplace Readiness Auditor"
+    },
+    "workbookDescription": {
+      "value": "Scores Azure-visible platform signals that usually matter for a commercial marketplace offer."
+    },
+    "tags": {
+      "value": {
+        "solution": "azure-marketplace-readiness",
+        "publisher": "Snyder Consulting"
+      }
+    }
+  }
+}

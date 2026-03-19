@@ -1,0 +1,344 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "4476761831333917046"
+    }
+  },
+  "parameters": {
+    "displayName": {
+      "type": "string",
+      "defaultValue": "Marketplace Readiness Auditor",
+      "metadata": {
+        "description": "Optional. Display name for the workbook."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Optional. Location for the workbook resource."
+      }
+    },
+    "workbookDescription": {
+      "type": "string",
+      "defaultValue": "Scores Azure-visible platform signals that usually matter for a commercial marketplace offer.",
+      "metadata": {
+        "description": "Optional. Workbook description."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "solution": "azure-marketplace-readiness"
+      },
+      "metadata": {
+        "description": "Optional. Tags to apply to the workbook resource."
+      }
+    }
+  },
+  "variables": {
+    "$fxv#0": {
+      "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+      "version": "Notebook/1.0",
+      "items": [
+        {
+          "type": 1,
+          "content": {
+            "json": "# Azure Marketplace Readiness Auditor\nUse this workbook to score Azure-visible architecture signals that affect how ready a product looks for marketplace motion."
+          },
+          "name": "text - title"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "This workbook reads Azure Resource Graph metadata only. It helps you assess observable hosting, security, integration, and operations signals. It does **not** inspect your source code, publisher agreements, Microsoft Entra app registrations, or Marketplace APIs directly.",
+            "style": "info"
+          },
+          "name": "text - scope"
+        },
+        {
+          "type": 9,
+          "content": {
+            "version": "KqlParameterItem/1.0",
+            "parameters": [
+              {
+                "id": "1f873f47-d530-4090-9f46-9b4ef95f35f0",
+                "version": "KqlParameterItem/1.0",
+                "name": "Subscription",
+                "label": "Subscriptions",
+                "type": 6,
+                "description": "Subscriptions included in the assessment.",
+                "isRequired": true,
+                "multiSelect": true,
+                "quote": "'",
+                "delimiter": ",",
+                "query": "Resources\n| summarize ResourceCount = count() by subscriptionId\n| order by ResourceCount desc\n| extend Rank = row_number()\n| project value = subscriptionId, label = subscriptionId, selected = Rank <= 3",
+                "crossComponentResources": [
+                  "value::selected"
+                ],
+                "typeSettings": {
+                  "additionalResourceOptions": [
+                    "value::all"
+                  ],
+                  "showDefault": false
+                },
+                "defaultValue": "value::all",
+                "queryType": 1,
+                "resourceType": "microsoft.resourcegraph/resources"
+              }
+            ],
+            "style": "above",
+            "queryType": 0,
+            "resourceType": "microsoft.resourcegraph/resources"
+          },
+          "name": "parameters - subscriptions"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "## At A Glance"
+          },
+          "name": "text - at a glance"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "let base = Resources | where subscriptionId in ({Subscription});\nlet productHostCount = toscalar(base | where type in~ ('microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.containerservice/managedclusters', 'microsoft.solutions/applications', 'microsoft.solutions/applicationdefinitions') | count);\nlet endpointCount = toscalar(base | where type in~ ('microsoft.apimanagement/service', 'microsoft.logic/workflows', 'microsoft.app/containerapps') or (type =~ 'microsoft.web/sites' and kind has 'functionapp') | count);\nlet observabilityCount = toscalar(base | where type in~ ('microsoft.insights/components', 'microsoft.operationalinsights/workspaces') | count);\nlet keyVaultCount = toscalar(base | where type =~ 'microsoft.keyvault/vaults' | count);\nlet managedIdentityCount = toscalar(base | where isnotempty(tostring(identity.type)) | count);\nlet backboneCount = toscalar(base | where type in~ ('microsoft.servicebus/namespaces', 'microsoft.eventgrid/systemtopics', 'microsoft.storage/storageaccounts', 'microsoft.sql/servers/databases', 'microsoft.documentdb/databaseaccounts') | count);\nlet checks = union\n(print Check = 'Offer surface', Weight = 25, Passed = productHostCount > 0),\n(print Check = 'Provisioning or integration endpoint plane', Weight = 20, Passed = endpointCount > 0),\n(print Check = 'Observability', Weight = 20, Passed = observabilityCount > 0),\n(print Check = 'Secrets and workload identity', Weight = 20, Passed = keyVaultCount > 0 and managedIdentityCount > 0),\n(print Check = 'Async backbone or durable state', Weight = 15, Passed = backboneCount > 0)\n| extend PointsAwarded = iff(Passed, Weight, 0);\nchecks\n| summarize ReadinessScore = sum(PointsAwarded), TotalPossible = sum(Weight), PassedChecks = countif(Passed), MissingChecks = countif(not(Passed))\n| extend ScorePercent = round(100.0 * todouble(ReadinessScore) / todouble(TotalPossible), 1)\n| extend ProductHosts = productHostCount, IntegrationEndpoints = endpointCount, ObservabilityAssets = observabilityCount, KeyVaults = keyVaultCount, IdentityEnabledResources = managedIdentityCount, BackboneResources = backboneCount",
+            "size": 3,
+            "title": "Readiness Score Summary",
+            "noDataMessage": "No resources found in the selected subscriptions.",
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "table",
+            "gridSettings": {
+              "filter": false,
+              "rowLimit": 1,
+              "sortBy": [
+                {
+                  "itemKey": "ReadinessScore",
+                  "sortOrder": 2
+                }
+              ]
+            }
+          },
+          "customWidth": "50",
+          "showPin": true,
+          "name": "query - readiness score summary"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "let base = Resources | where subscriptionId in ({Subscription});\nlet productHostCount = toscalar(base | where type in~ ('microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.containerservice/managedclusters', 'microsoft.solutions/applications', 'microsoft.solutions/applicationdefinitions') | count);\nlet endpointCount = toscalar(base | where type in~ ('microsoft.apimanagement/service', 'microsoft.logic/workflows', 'microsoft.app/containerapps') or (type =~ 'microsoft.web/sites' and kind has 'functionapp') | count);\nlet observabilityCount = toscalar(base | where type in~ ('microsoft.insights/components', 'microsoft.operationalinsights/workspaces') | count);\nlet keyVaultCount = toscalar(base | where type =~ 'microsoft.keyvault/vaults' | count);\nlet managedIdentityCount = toscalar(base | where isnotempty(tostring(identity.type)) | count);\nlet backboneCount = toscalar(base | where type in~ ('microsoft.servicebus/namespaces', 'microsoft.eventgrid/systemtopics', 'microsoft.storage/storageaccounts', 'microsoft.sql/servers/databases', 'microsoft.documentdb/databaseaccounts') | count);\nunion\n(print Status = iff(productHostCount > 0, 'Passed', 'Missing')),\n(print Status = iff(endpointCount > 0, 'Passed', 'Missing')),\n(print Status = iff(observabilityCount > 0, 'Passed', 'Missing')),\n(print Status = iff(keyVaultCount > 0 and managedIdentityCount > 0, 'Passed', 'Missing')),\n(print Status = iff(backboneCount > 0, 'Passed', 'Missing'))\n| summarize Checks = count() by Status",
+            "size": 3,
+            "title": "Passed vs Missing Checks",
+            "noDataMessage": "No checks could be computed from the selected subscriptions.",
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "piechart"
+          },
+          "customWidth": "50",
+          "showPin": true,
+          "name": "query - check status pie"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "let base = Resources | where subscriptionId in ({Subscription});\nlet managedAppAssets = toscalar(base | where type in~ ('microsoft.solutions/applications', 'microsoft.solutions/applicationdefinitions') | count);\nlet appHosts = toscalar(base | where type in~ ('microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.containerservice/managedclusters') | count);\nlet endpointCount = toscalar(base | where type in~ ('microsoft.apimanagement/service', 'microsoft.logic/workflows', 'microsoft.app/containerapps') or (type =~ 'microsoft.web/sites' and kind has 'functionapp') | count);\nprint RecommendedPath = case(managedAppAssets > 0, 'Azure Managed Application', appHosts > 0 and endpointCount > 0, 'SaaS or Container Offer', appHosts > 0, 'Listing plus implementation services', 'Build product surface first'), ManagedAppAssets = managedAppAssets, ApplicationHosts = appHosts, EndpointPlaneAssets = endpointCount, Rationale = case(managedAppAssets > 0, 'Managed application assets already exist in Azure.', appHosts > 0 and endpointCount > 0, 'An application host and an endpoint plane are both visible.', appHosts > 0, 'You appear to have a host, but not the supporting endpoint layer that most transactable offers need.', 'Azure does not currently expose a clear product surface in the selected subscriptions.')",
+            "size": 3,
+            "title": "Observed Offer Path",
+            "noDataMessage": "No offer path could be inferred from the selected subscriptions.",
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "table",
+            "gridSettings": {
+              "filter": false,
+              "rowLimit": 1
+            }
+          },
+          "showPin": true,
+          "name": "query - observed offer path"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "let base = Resources | where subscriptionId in ({Subscription});\nlet productHostCount = toscalar(base | where type in~ ('microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.containerservice/managedclusters', 'microsoft.solutions/applications', 'microsoft.solutions/applicationdefinitions') | count);\nlet endpointCount = toscalar(base | where type in~ ('microsoft.apimanagement/service', 'microsoft.logic/workflows', 'microsoft.app/containerapps') or (type =~ 'microsoft.web/sites' and kind has 'functionapp') | count);\nlet observabilityCount = toscalar(base | where type in~ ('microsoft.insights/components', 'microsoft.operationalinsights/workspaces') | count);\nlet keyVaultCount = toscalar(base | where type =~ 'microsoft.keyvault/vaults' | count);\nlet managedIdentityCount = toscalar(base | where isnotempty(tostring(identity.type)) | count);\nlet backboneCount = toscalar(base | where type in~ ('microsoft.servicebus/namespaces', 'microsoft.eventgrid/systemtopics', 'microsoft.storage/storageaccounts', 'microsoft.sql/servers/databases', 'microsoft.documentdb/databaseaccounts') | count);\nunion\n(print Check = 'Offer surface', Status = iff(productHostCount > 0, 'Passed', 'Missing'), Weight = 25, Evidence = strcat(productHostCount, ' candidate hosts found'), WhyItMatters = 'Marketplace motion starts with a workload Azure can actually observe and deploy around.', RecommendedAction = 'Identify the specific app, container, cluster, or managed application you want to package.'),\n(print Check = 'Provisioning or integration endpoint plane', Status = iff(endpointCount > 0, 'Passed', 'Missing'), Weight = 20, Evidence = strcat(endpointCount, ' endpoint resources found'), WhyItMatters = 'Transactable offers usually need some externally reachable plane for provisioning, webhook handling, or integration orchestration.', RecommendedAction = 'Add API Management, Function Apps, Logic Apps, or Container Apps to handle provisioning and fulfillment workflows.'),\n(print Check = 'Observability', Status = iff(observabilityCount > 0, 'Passed', 'Missing'), Weight = 20, Evidence = strcat(observabilityCount, ' observability resources found'), WhyItMatters = 'Operational visibility is expected internally and during technical review.', RecommendedAction = 'Add Application Insights or Log Analytics and wire workload telemetry into it.'),\n(print Check = 'Secrets and workload identity', Status = iff(keyVaultCount > 0 and managedIdentityCount > 0, 'Passed', 'Missing'), Weight = 20, Evidence = strcat(keyVaultCount, ' key vaults, ', managedIdentityCount, ' identity-enabled resources'), WhyItMatters = 'A transactable product should not depend on hard-coded credentials or weak secret handling.', RecommendedAction = 'Use managed identity on the workload and move secrets into Key Vault.'),\n(print Check = 'Async backbone or durable state', Status = iff(backboneCount > 0, 'Passed', 'Missing'), Weight = 15, Evidence = strcat(backboneCount, ' backbone resources found'), WhyItMatters = 'Provisioning, plan changes, and customer lifecycle events usually need state or asynchronous processing.', RecommendedAction = 'Add storage, Service Bus, Event Grid, SQL, or Cosmos DB to support durable workflows.')\n| extend PointsAwarded = iff(Status == 'Passed', Weight, 0)\n| order by Status asc, Weight desc",
+            "size": 3,
+            "title": "Detailed Check Matrix",
+            "noDataMessage": "No detailed checks could be computed from the selected subscriptions.",
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "table",
+            "gridSettings": {
+              "filter": true,
+              "rowLimit": 20,
+              "sortBy": [
+                {
+                  "itemKey": "Status",
+                  "sortOrder": 1
+                },
+                {
+                  "itemKey": "Weight",
+                  "sortOrder": 2
+                }
+              ]
+            }
+          },
+          "showPin": true,
+          "name": "query - detailed checks"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "## Observed Platform Footprint"
+          },
+          "name": "text - footprint"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "let observedTypes = dynamic(['microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.containerservice/managedclusters', 'microsoft.apimanagement/service', 'microsoft.logic/workflows', 'microsoft.insights/components', 'microsoft.operationalinsights/workspaces', 'microsoft.keyvault/vaults', 'microsoft.servicebus/namespaces', 'microsoft.eventgrid/systemtopics', 'microsoft.storage/storageaccounts', 'microsoft.sql/servers/databases', 'microsoft.documentdb/databaseaccounts', 'microsoft.solutions/applications', 'microsoft.solutions/applicationdefinitions']);\nResources\n| where subscriptionId in ({Subscription})\n| where type in~ (observedTypes)\n| extend Capability = case(type =~ 'microsoft.web/sites' and kind has 'functionapp', 'Webhook-capable compute', type =~ 'microsoft.web/sites', 'Web application host', type =~ 'microsoft.app/containerapps', 'Containerized app host', type =~ 'microsoft.containerservice/managedclusters', 'Kubernetes host', type =~ 'microsoft.apimanagement/service', 'API front door', type =~ 'microsoft.logic/workflows', 'Integration workflow', type =~ 'microsoft.insights/components' or type =~ 'microsoft.operationalinsights/workspaces', 'Observability', type =~ 'microsoft.keyvault/vaults', 'Secrets management', type =~ 'microsoft.servicebus/namespaces', 'Async provisioning or messaging', type =~ 'microsoft.eventgrid/systemtopics', 'Event routing', type =~ 'microsoft.storage/storageaccounts', 'State or artifact storage', type =~ 'microsoft.sql/servers/databases' or type =~ 'microsoft.documentdb/databaseaccounts', 'Tenant data store', type =~ 'microsoft.solutions/applications' or type =~ 'microsoft.solutions/applicationdefinitions', 'Managed application assets', 'Other')\n| summarize Resources = count() by Capability\n| order by Resources desc",
+            "size": 3,
+            "title": "Relevant Capability Distribution",
+            "noDataMessage": "No relevant platform resources were found in the selected subscriptions.",
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "piechart"
+          },
+          "customWidth": "50",
+          "showPin": true,
+          "name": "query - capability distribution"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "let observedTypes = dynamic(['microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.containerservice/managedclusters', 'microsoft.apimanagement/service', 'microsoft.logic/workflows', 'microsoft.insights/components', 'microsoft.operationalinsights/workspaces', 'microsoft.keyvault/vaults', 'microsoft.servicebus/namespaces', 'microsoft.eventgrid/systemtopics', 'microsoft.storage/storageaccounts', 'microsoft.sql/servers/databases', 'microsoft.documentdb/databaseaccounts', 'microsoft.solutions/applications', 'microsoft.solutions/applicationdefinitions']);\nResources\n| where subscriptionId in ({Subscription})\n| where type in~ (observedTypes)\n| extend Capability = case(type =~ 'microsoft.web/sites' and kind has 'functionapp', 'Webhook-capable compute', type =~ 'microsoft.web/sites', 'Web application host', type =~ 'microsoft.app/containerapps', 'Containerized app host', type =~ 'microsoft.containerservice/managedclusters', 'Kubernetes host', type =~ 'microsoft.apimanagement/service', 'API front door', type =~ 'microsoft.logic/workflows', 'Integration workflow', type =~ 'microsoft.insights/components' or type =~ 'microsoft.operationalinsights/workspaces', 'Observability', type =~ 'microsoft.keyvault/vaults', 'Secrets management', type =~ 'microsoft.servicebus/namespaces', 'Async provisioning or messaging', type =~ 'microsoft.eventgrid/systemtopics', 'Event routing', type =~ 'microsoft.storage/storageaccounts', 'State or artifact storage', type =~ 'microsoft.sql/servers/databases' or type =~ 'microsoft.documentdb/databaseaccounts', 'Tenant data store', type =~ 'microsoft.solutions/applications' or type =~ 'microsoft.solutions/applicationdefinitions', 'Managed application assets', 'Other')\n| project Name = name, Capability, Type = type, Kind = coalesce(kind, ''), Subscription = subscriptionId, ResourceGroup = resourceGroup, Location = location, Identity = coalesce(tostring(identity.type), 'None')\n| order by Capability asc, Name asc",
+            "size": 3,
+            "title": "Relevant Resource Inventory",
+            "noDataMessage": "No relevant platform resources were found in the selected subscriptions.",
+            "showExportToExcel": true,
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "table",
+            "gridSettings": {
+              "filter": true,
+              "rowLimit": 50
+            }
+          },
+          "customWidth": "50",
+          "showPin": true,
+          "name": "query - relevant resource inventory"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "## Security And Operations Signals"
+          },
+          "name": "text - security ops"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "Resources\n| where subscriptionId in ({Subscription})\n| where type in~ ('microsoft.web/sites', 'microsoft.app/containerapps', 'microsoft.apimanagement/service', 'microsoft.keyvault/vaults', 'microsoft.storage/storageaccounts')\n| extend ExposureSignal = case(type =~ 'microsoft.web/sites', iff(tobool(properties.httpsOnly), 'HTTPS only enabled', 'HTTPS only disabled'), type =~ 'microsoft.app/containerapps' and isnull(properties.configuration.ingress), 'Ingress not configured', type =~ 'microsoft.app/containerapps' and tobool(properties.configuration.ingress.external), 'External ingress enabled', type =~ 'microsoft.app/containerapps', 'Internal only or ingress disabled', type =~ 'microsoft.apimanagement/service' and tostring(properties.publicNetworkAccess) == 'Disabled', 'Public network disabled', type =~ 'microsoft.apimanagement/service' and tostring(properties.publicNetworkAccess) == 'Enabled', 'Public network enabled', type =~ 'microsoft.keyvault/vaults' and tostring(properties.publicNetworkAccess) == 'Disabled', 'Public network disabled', type =~ 'microsoft.keyvault/vaults' and tostring(properties.publicNetworkAccess) == 'Enabled', 'Public network enabled', type =~ 'microsoft.storage/storageaccounts' and tostring(properties.publicNetworkAccess) == 'Disabled', 'Public network disabled', type =~ 'microsoft.storage/storageaccounts' and tostring(properties.publicNetworkAccess) == 'Enabled', 'Public network enabled', 'Signal not reported')\n| extend IdentitySignal = case(isnotempty(tostring(identity.type)), tostring(identity.type), type =~ 'microsoft.keyvault/vaults', 'n/a', 'None')\n| project Name = name, Type = type, ResourceGroup = resourceGroup, Location = location, ExposureSignal, IdentitySignal\n| order by Type asc, Name asc",
+            "size": 3,
+            "title": "Exposure And Identity Signals",
+            "noDataMessage": "No exposure or identity signals were found for the selected subscriptions.",
+            "showExportToExcel": true,
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "visualization": "table",
+            "gridSettings": {
+              "filter": true,
+              "rowLimit": 50
+            }
+          },
+          "showPin": true,
+          "name": "query - exposure identity signals"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "## Limits And Next Steps"
+          },
+          "name": "text - limits heading"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "This workbook does **not** verify publisher setup, commercial marketplace enrollment, Microsoft Partner Agreement status, Microsoft Entra app registration configuration, SaaS Fulfillment API endpoints, metering APIs, pricing plans, private offers, or listing copy. Treat this as an architecture signal audit, not a compliance certificate.",
+            "style": "warning"
+          },
+          "name": "text - limits"
+        },
+        {
+          "type": 1,
+          "content": {
+            "json": "> Publisher note: replace this block with your booking link, lead form, or implementation sprint offer before you publish the workbook externally.\n\nTypical follow-up work after a low score:\n1. Add or harden the provisioning endpoint plane.\n2. Wire in observability and secret management.\n3. Choose a concrete marketplace motion: managed application, SaaS or container, or services-first listing."
+          },
+          "name": "text - cta placeholder"
+        }
+      ]
+    },
+    "version": "",
+    "workbookJson": "[string(variables('$fxv#0'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/workbooks",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, 'Microsoft.Insights/workbooks', parameters('displayName'))]",
+      "location": "[parameters('location')]",
+      "kind": "shared",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "category": "workbook",
+        "description": "[parameters('workbookDescription')]",
+        "displayName": "[parameters('displayName')]",
+        "serializedData": "[variables('workbookJson')]",
+        "sourceId": "Azure Monitor",
+        "version": "[variables('version')]"
+      }
+    }
+  ],
+  "outputs": {
+    "workbookId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'Microsoft.Insights/workbooks', parameters('displayName')))]"
+    },
+    "workbookUrl": {
+      "type": "string",
+      "value": "[format('{0}/#view/AppInsightsExtension/UsageNotebookBlade/ComponentId/Azure%20Monitor/ConfigurationId/{1}/Type/{2}/WorkbookTemplateName/{3}', environment().portal, uriComponent(resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'Microsoft.Insights/workbooks', parameters('displayName')))), reference(resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'Microsoft.Insights/workbooks', parameters('displayName'))), '2022-04-01').category, uriComponent(reference(resourceId('Microsoft.Insights/workbooks', guid(resourceGroup().id, 'Microsoft.Insights/workbooks', parameters('displayName'))), '2022-04-01').displayName))]"
+    }
+  }
+}
