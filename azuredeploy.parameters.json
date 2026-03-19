@@ -3,10 +3,10 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "displayName": {
-      "value": "Marketplace Readiness Auditor"
+      "value": "Microsoft Marketplace Readiness Auditor"
     },
     "workbookDescription": {
-      "value": "Scores Azure-visible platform signals that usually matter for a commercial marketplace offer."
+      "value": "Assesses measured Azure platform readiness and manual marketplace readiness checklists."
     },
     "tags": {
       "value": {

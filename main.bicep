@@ -1,13 +1,13 @@
 targetScope = 'resourceGroup'
 
 @sys.description('Optional. Display name for the workbook.')
-param displayName string = 'Marketplace Readiness Auditor'
+param displayName string = 'Microsoft Marketplace Readiness Auditor'
 
 @sys.description('Optional. Location for the workbook resource.')
 param location string = resourceGroup().location
 
 @sys.description('Optional. Workbook description.')
-param workbookDescription string = 'Scores Azure-visible platform signals that usually matter for a commercial marketplace offer.'
+param workbookDescription string = 'Assesses measured Azure platform readiness and manual marketplace readiness checklists.'
 
 @sys.description('Optional. Tags to apply to the workbook resource.')
 param tags object = {

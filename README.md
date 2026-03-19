@@ -1,24 +1,24 @@
 # Azure Marketplace Readiness Workbook
 
-Deploy an Azure Workbook that scores Azure-visible platform signals for marketplace readiness. The workbook is meant to help a product or engineering team understand whether its current Azure footprint looks more like a viable marketplace offer, a services-led implementation, or an immature product surface.
+Deploy an Azure Workbook that separates **measured Azure platform readiness** from **manual publishing, transaction, and GTM readiness**. The workbook is meant to help a product or engineering team understand what Azure can verify directly, what still has to be checked in Partner Center, and where the biggest readiness gaps are.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FSnyderConsulting%2Fazure-marketplace-readiness-workbook%2Fmain%2Fazuredeploy.json)
 
 ## What it checks
 
-- Observable offer surface such as App Service, Container Apps, AKS, or managed application assets
-- Presence of an endpoint or orchestration layer such as API Management, Function Apps, Logic Apps, or Container Apps
-- Observability footprint via Application Insights or Log Analytics
-- Security signals like Key Vault and managed identity
-- Operational backbone resources like storage, Service Bus, Event Grid, SQL, or Cosmos DB
+- Measured platform readiness score based on Azure-visible signals
+- Customer-facing product surface and public entry points such as Static Web Apps, App Service, Front Door, or API Management
+- Integration and provisioning signals such as Functions, Logic Apps, and API Management
+- Operational posture signals such as Application Insights, Log Analytics, storage, messaging, Key Vault, managed identity, and private access signals
+- Manual publishing, transaction, and GTM checklists with direct links to Microsoft Learn
 
-## What it does not check
+## What it does not check directly
 
-- Microsoft Partner Center enrollment
-- Marketplace agreements or listing state
-- Source code, packaging logic, or SaaS Fulfillment API implementation
+- Microsoft Partner Center enrollment or agreement state
+- Actual marketplace listing metadata or certification state
+- Source code, fulfillment logic, or SaaS API correctness
 - Microsoft Entra application registrations
-- Pricing plans, private offers, or publisher-side GTM assets
+- Tax, payout, co-sell, MACC, or private offer status
 
 ## Repo layout
 
@@ -33,10 +33,10 @@ Deploy an Azure Workbook that scores Azure-visible platform signals for marketpl
 1. Click the `Deploy to Azure` button.
 2. Choose a subscription and resource group for the workbook resource.
 3. Open `Azure Monitor > Workbooks`.
-4. Open `Marketplace Readiness Auditor`.
+4. Open `Microsoft Marketplace Readiness Auditor`.
 5. Use the `Subscriptions` filter inside the workbook to scope the assessment.
 
-Each chart and table exposes the Azure pin action, so a user can pin the score, the check distribution, or any other visual directly to an Azure Dashboard after deployment.
+Each chart and table exposes the Azure pin action, so a user can pin the measured platform score, check distribution, or any other visual directly to an Azure Dashboard after deployment.
 
 ## Local maintenance
 
@@ -56,5 +56,6 @@ python -m json.tool azuredeploy.parameters.json >/dev/null
 ## Customization before publishing
 
 - Replace the workbook CTA placeholder with your own booking link or lead form.
-- Tighten or expand the KQL checks based on the exact marketplace motion you want to sell.
+- Adjust the measured score weights if you want to emphasize a specific offer type.
+- Expand the manual checklist sections if your workflow requires additional Partner Center checks.
 - Add branding or supporting docs if you want to use the repo as a lead magnet.
